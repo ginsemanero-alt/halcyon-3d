@@ -228,7 +228,7 @@ for (let i = 0; i < 6; i++) {
   const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, rand(2.5, 4.5), rand(3, 6)), holeMat);
   b.position.set(faceX - 0.2, impactY + rand(-1.6, 1.6), rand(-3.2, 3.2)); b.rotation.x = rand(-0.5, 0.5); damage.add(b);
 }
-const glow = new THREE.Mesh(new THREE.PlaneGeometry(9, 6), new THREE.MeshBasicMaterial({ color: 0xff6a2a, transparent: true, opacity: 0.55, depthWrite: false }));
+const glow = new THREE.Mesh(new THREE.PlaneGeometry(9, 6), new THREE.MeshBasicMaterial({ color: 0xff6a2a, transparent: true, opacity: 0.35, depthWrite: false }));
 glow.position.set(faceX - 0.45, impactY, 0); glow.rotation.y = -Math.PI / 2; damage.add(glow);
 group.add(damage);
 const fireLight = new THREE.PointLight(0xff6a2a, 0, 140, 2); fireLight.position.set(faceX - 7, impactY, 0); group.add(fireLight);
@@ -270,8 +270,8 @@ onUpdate((dt, now) => {
 
   // fire + smoke at the gash
   if (burning) {
-    fireAcc += dt * 45; smokeAcc += dt * 28;
-    while (fireAcc > 1) { fireAcc -= 1; spawn('fire', V3(faceX - rand(0, 3), impactY + rand(-1.8, 1.8), rand(-3.5, 3.5)), V3(rand(-3, 1), rand(4, 9), rand(-1.5, 1.5)), rand(0.7, 1.4), rand(4, 8), 0.8, 0.9); }
+    fireAcc += dt * 26; smokeAcc += dt * 28;
+    while (fireAcc > 1) { fireAcc -= 1; spawn('fire', V3(faceX - rand(0, 3), impactY + rand(-1.8, 1.8), rand(-3.5, 3.5)), V3(rand(-3, 1), rand(4, 9), rand(-1.5, 1.5)), rand(0.7, 1.4), rand(2.6, 5.2), 0.8, 0.8); }
     while (smokeAcc > 1) { smokeAcc -= 1; spawn('smoke', V3(faceX - rand(0, 3), impactY + rand(0, 3), rand(-3, 3)), V3(rand(3, 7), rand(7, 12), rand(1, 4)), rand(6, 10), rand(7, 12), 3.2, 0.55); }
     fireLight.intensity = 700 + Math.sin(now * 25) * 220 + Math.random() * 180;
   } else fireLight.intensity = 0;

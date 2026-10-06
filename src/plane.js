@@ -12,7 +12,7 @@ import { $, V3, rand } from './util.js';
    The rig flies nose-first along +Z (Object3D.lookAt convention).
    ===================================================================== */
 export const planeRig = new THREE.Group(); planeRig.visible = false; scene.add(planeRig);
-const holder = new THREE.Group(); planeRig.add(holder);
+export const holder = new THREE.Group(); planeRig.add(holder); // the airliner model (wreck.js clones it)
 let yaw = PLANE_MODEL_YAW;
 
 function proceduralPlane() {
@@ -149,4 +149,4 @@ export function resetPlane() {
 }
 export { impactPoint };
 
-loadPlane();
+export const planeReady = loadPlane();

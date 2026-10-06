@@ -40,37 +40,114 @@ function makeWindowTex(w, h, rows, cols, rnd, litChance) {
 }
 
 /* ---------- realistic glass curtain-wall towers ---------- */
+// glass = curtain wall (floor-to-ceiling glass, dark spandrels); stone = masonry with punched windows
 const STYLES = [
-  { glass: '#243a5c', glass2: '#35557f', frame: '#8c93a3', lit: 0.55 },  // blue curtain wall
-  { glass: '#1c2c33', glass2: '#2b4550', frame: '#6e7a80', lit: 0.5 },   // teal-grey glass
-  { glass: '#3a2e2a', glass2: '#5a463d', frame: '#9a8f86', lit: 0.6 },   // bronze glass
-  { glass: '#161b27', glass2: '#222c40', frame: '#555b69', lit: 0.45 },  // dark steel
+  { kind: 'glass', glass: '#243a5c', glass2: '#4a6c98', frame: '#8c93a3', spandrel: '#1b2638', lit: 0.55 },  // blue curtain wall
+  { kind: 'glass', glass: '#1c2c33', glass2: '#3f6170', frame: '#6e7a80', spandrel: '#141d21', lit: 0.5 },   // teal-grey glass
+  { kind: 'glass', glass: '#3a2e2a', glass2: '#6e5649', frame: '#9a8f86', spandrel: '#261d19', lit: 0.6 },   // bronze glass
+  { kind: 'glass', glass: '#161b27', glass2: '#2f3b55', frame: '#555b69', spandrel: '#0e1118', lit: 0.45 },  // dark steel
+  { kind: 'stone', glass: '#1f2633', glass2: '#46546b', frame: '#b5a993', spandrel: '#a39782', lit: 0.5 },   // limestone
+  { kind: 'stone', glass: '#1d2129', glass2: '#3c4556', frame: '#8a5a48', spandrel: '#7b4f3f', lit: 0.55 },  // brick
 ];
 const facadeCache = new Map();
 function facade(cols, rows, si, variant) {
   const key = `${cols}x${rows}:${si}:${variant}`;
   if (facadeCache.has(key)) return facadeCache.get(key);
-  const S = STYLES[si], cw = 16, ch = 20;
+  const S = STYLES[si], stone = S.kind === 'stone', cw = 24, ch = 32;
   const rnd = seeded(cols * 1000 + rows * 17 + si * 131 + variant * 7919 + 5);
-  const a = document.createElement('canvas'), e = document.createElement('canvas');
-  a.width = e.width = cols * cw; a.height = e.height = rows * ch;
-  const ax = a.getContext('2d'), ex = e.getContext('2d');
+  const a = document.createElement('canvas'), e = document.createElement('canvas'), r = document.createElement('canvas');
+  a.width = e.width = r.width = cols * cw; a.height = e.height = r.height = rows * ch;
+  const ax = a.getContext('2d'), ex = e.getContext('2d'), rx = r.getContext('2d');
   ax.fillStyle = S.frame; ax.fillRect(0, 0, a.width, a.height);
+  if (stone) for (let i = 0; i < a.width * a.height / 40; i++) { // masonry grain
+    ax.fillStyle = `rgba(${rnd() < 0.5 ? '0,0,0' : '255,255,255'},${0.03 + rnd() * 0.05})`; ax.fillRect(rnd() * a.width, rnd() * a.height, 2, 1);
+  }
   ex.fillStyle = '#000'; ex.fillRect(0, 0, e.width, e.height);
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    const x = c * cw, y = r * ch;
-    const g = ax.createLinearGradient(x, y, x, y + ch);
-    g.addColorStop(0, S.glass2); g.addColorStop(1, S.glass);
-    ax.fillStyle = g; ax.fillRect(x + 2, y + 3, cw - 4, ch - 6);
-    if (rnd() < S.lit) {
-      ex.fillStyle = rnd() < 0.18 ? '#cfe6ff' : (rnd() < 0.5 ? '#ffd9a0' : '#ffc27a');
-      ex.globalAlpha = 0.45 + rnd() * 0.55; ex.fillRect(x + 2, y + 3, cw - 4, ch - 6); ex.globalAlpha = 1;
+  rx.fillStyle = 'rgb(150,150,150)'; rx.fillRect(0, 0, r.width, r.height);          // frame / masonry: rough
+  for (let row = 0; row < rows; row++) {
+    const y = row * ch;
+    // floor band: dark spandrel glass on curtain walls, a cornice line on masonry
+    ax.fillStyle = S.spandrel; ax.fillRect(0, y + ch - (stone ? 4 : 8), a.width, stone ? 4 : 8);
+    for (let c = 0; c < cols; c++) {
+      const x = c * cw, ix = stone ? 6 : 2, iy = stone ? 6 : 2, w = cw - ix * 2, h = ch - iy - (stone ? 9 : 10);
+      // sky reflection: brighter at the top of the pane, a little variation pane to pane
+      const g = ax.createLinearGradient(x, y + iy, x + w * 0.3, y + iy + h);
+      g.addColorStop(0, S.glass2); g.addColorStop(0.55 + rnd() * 0.2, S.glass); g.addColorStop(1, S.glass);
+      ax.fillStyle = g; ax.fillRect(x + ix, y + iy, w, h);
+      rx.fillStyle = 'rgb(18,18,18)'; rx.fillRect(x + ix, y + iy, w, h);           // glass: glossy
+      if (!stone) { ax.fillStyle = S.frame; ax.fillRect(x + cw / 2 - 0.5, y + iy, 1, h); } // mullion between two panes
+      const blinds = rnd() < 0.3 ? h * (0.2 + rnd() * 0.45) : 0;
+      if (blinds) { ax.fillStyle = 'rgba(205,200,190,.75)'; for (let k = 0; k < blinds; k += 2) ax.fillRect(x + ix, y + iy + k, w, 1); }
+      if (rnd() < S.lit) {
+        ex.fillStyle = rnd() < 0.18 ? '#cfe6ff' : (rnd() < 0.5 ? '#ffd9a0' : '#ffc27a');
+        ex.globalAlpha = 0.45 + rnd() * 0.55; ex.fillRect(x + ix, y + iy + blinds, w, h - blinds); ex.globalAlpha = 1;
+        // what is inside the lit room: a desk line and sometimes a person
+        ex.fillStyle = '#000'; ex.globalAlpha = 0.55;
+        ex.fillRect(x + ix, y + iy + h * 0.72, w, h * 0.09);
+        if (rnd() < 0.35) { const px = x + ix + rnd() * (w - 5); ex.fillRect(px, y + iy + h * 0.38, 4, h * 0.5); ex.beginPath(); ex.arc(px + 2, y + iy + h * 0.32, 2.4, 0, 7); ex.fill(); }
+        ex.globalAlpha = 1;
+      }
     }
   }
-  const mk = (cv) => { const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
-  const mat = new THREE.MeshStandardMaterial({ map: mk(a), emissiveMap: mk(e), emissive: 0xffffff, emissiveIntensity: 1.15, metalness: 0.6, roughness: 0.2 });
+  const mk = (cv, srgb = true) => { const t = new THREE.CanvasTexture(cv); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
+  const mat = new THREE.MeshStandardMaterial({ map: mk(a), emissiveMap: mk(e), emissive: 0xffffff, emissiveIntensity: 1.15, roughnessMap: mk(r, false), roughness: 1, metalness: stone ? 0.15 : 0.55 });
   const out = { mat }; facadeCache.set(key, out); return out;
 }
+
+/* ground-floor shops: lit shop windows, a sign band and awnings (a few variants shared by all buildings) */
+const SHOPS = [['CAFÉ LUNA', '#2f5d50'], ['VERRANE BANK', '#24324f'], ['PHARMACY', '#2e7d4f'], ['BOOKS & CO', '#7a3b2e'], ['NOODLE BAR', '#9a2f2f'], ['MARKET', '#5a4a2a'], ['FLOWERS', '#7a3e6a'], ['BAKERY', '#8a5a2a']];
+const shopCache = new Map();
+function storefront(v) {
+  if (shopCache.has(v)) return shopCache.get(v);
+  const rnd = seeded(300 + v), W = 512, H = 128;
+  const a = document.createElement('canvas'), e = document.createElement('canvas'); a.width = e.width = W; a.height = e.height = H;
+  const ax = a.getContext('2d'), ex = e.getContext('2d');
+  ax.fillStyle = '#2a2830'; ax.fillRect(0, 0, W, H); ex.fillStyle = '#000'; ex.fillRect(0, 0, W, H);
+  const n = 3; const sw = W / n;
+  for (let i = 0; i < n; i++) {
+    const [name, col] = SHOPS[(v * 3 + i) % SHOPS.length], x = i * sw;
+    ax.fillStyle = col; ax.fillRect(x + 4, 6, sw - 8, 24);                              // sign band
+    ax.fillStyle = '#f4efe4'; ax.font = '800 15px system-ui, sans-serif'; ax.textAlign = 'center'; ax.textBaseline = 'middle'; ax.fillText(name, x + sw / 2, 19);
+    ex.fillStyle = '#7a7466'; ex.font = '800 15px system-ui, sans-serif'; ex.textAlign = 'center'; ex.textBaseline = 'middle'; ex.fillText(name, x + sw / 2, 19);
+    for (let s = 0; s < 8; s++) { ax.fillStyle = s % 2 ? col : '#ece6da'; ax.fillRect(x + 6 + s * (sw - 12) / 8, 32, (sw - 12) / 8, 10); } // striped awning
+    ax.fillStyle = '#5b6878'; ax.fillRect(x + 8, 46, sw - 16, H - 52);               // shop window
+    ex.fillStyle = rnd() < 0.5 ? '#ffd9a0' : '#fff0d0'; ex.globalAlpha = 0.85; ex.fillRect(x + 8, 46, sw - 16, H - 52); ex.globalAlpha = 1;
+    ex.fillStyle = '#000'; ex.globalAlpha = 0.5;                                      // shelves / goods / a customer
+    for (let k = 0; k < 3; k++) ex.fillRect(x + 12, 60 + k * 20, sw - 24, 3);
+    if (rnd() < 0.6) { const px = x + 20 + rnd() * (sw - 50); ex.fillRect(px, 72, 9, 40); ex.beginPath(); ex.arc(px + 4.5, 66, 5, 0, 7); ex.fill(); }
+    ex.globalAlpha = 1;
+    ax.fillStyle = '#1a191e'; ax.fillRect(x + sw / 2 - 12, 70, 24, H - 76);           // door
+    ax.fillStyle = '#2a2830'; ax.fillRect(x, 0, 4, H); ax.fillRect(x + sw - 4, 0, 4, H);
+  }
+  const mk = (cv) => { const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
+  const m = new THREE.MeshStandardMaterial({ map: mk(a), emissiveMap: mk(e), emissive: 0xffffff, emissiveIntensity: 1.1, roughness: 0.5, metalness: 0.2 });
+  shopCache.set(v, m); return m;
+}
+
+/* rooftop details: parapet, HVAC units, a water tank, and a blinking red aviation light on tall buildings */
+const parapetMat = new THREE.MeshStandardMaterial({ color: 0x4a4752, roughness: 0.8 });
+const hvacMat = new THREE.MeshStandardMaterial({ color: 0x9a9ca4, roughness: 0.5, metalness: 0.6 });
+const tankMat = new THREE.MeshStandardMaterial({ color: 0x6b4e3a, roughness: 0.9 });
+const aviationMat = new THREE.MeshBasicMaterial({ color: 0xff2a1a });
+function roofDetails(g, w, d, top, rnd) {
+  const t = 0.3, ph = 0.9;
+  for (const [sx, sz, px, pz] of [[w, t, 0, d / 2 - t / 2], [w, t, 0, -d / 2 + t / 2], [t, d, w / 2 - t / 2, 0], [t, d, -w / 2 + t / 2, 0]]) {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(sx, ph, sz), parapetMat); p.position.set(px, top + ph / 2, pz); p.castShadow = true; g.add(p);
+  }
+  for (let i = 0, n = 2 + Math.floor(rnd() * 3); i < n; i++) {
+    const s = 1 + rnd() * 1.2, u = new THREE.Mesh(new THREE.BoxGeometry(s, 0.9, s * 0.8), hvacMat);
+    u.position.set((rnd() - 0.5) * (w - 3), top + 0.45, (rnd() - 0.5) * (d - 3)); u.castShadow = true; g.add(u);
+  }
+  if (rnd() < 0.4) {
+    const x = (rnd() - 0.5) * (w - 4), z = (rnd() - 0.5) * (d - 4);
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 2.2, 14), tankMat); tank.position.set(x, top + 2.3, z); tank.castShadow = true; g.add(tank);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.7, 14), tankMat); cap.position.set(x, top + 3.75, z); g.add(cap);
+    for (const [lx, lz] of [[0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 0.1), parapetMat); l.position.set(x + lx, top + 0.6, z + lz); g.add(l); }
+  }
+  if (top > 30) { const a = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), aviationMat); a.position.set(w / 2 - 0.5, top + 1.2, d / 2 - 0.5); g.add(a); aviation.push(a); }
+}
+const aviation = [];
+onUpdate((dt, now) => { const on = Math.sin(now * 3.1) > 0.4; aviation.forEach((a) => (a.visible = on)); });
 
 const cityRoofMat = new THREE.MeshStandardMaterial({ color: 0x34323e, roughness: 0.85, metalness: 0.1 });
 const CFLOOR = 3.4;
@@ -80,11 +157,14 @@ function makePart(w, d, rows, cols, si, variant) {
   mesh.position.y = h / 2; mesh.castShadow = mesh.receiveShadow = true;
   return { mesh, h };
 }
+let buildingNo = 0;
 function realisticBuilding(rnd, dist) {
   const g = new THREE.Group();
+  const det = seeded(9001 + buildingNo++ * 97); // detail randomness kept separate so the skyline layout stays the same
   const w = 11 + rnd() * 5, d = 11 + rnd() * 5;
   const rows = Math.min(Math.max(2 * Math.round((5 + rnd() * 8 - dist * 0.8) / 2), 4), 18);
-  const cols = [4, 6, 8][Math.floor(rnd() * 3)], si = Math.floor(rnd() * STYLES.length), variant = Math.floor(rnd() * 2);
+  const cols = [4, 6, 8][Math.floor(rnd() * 3)], variant = Math.floor(rnd() * 2);
+  let si = Math.floor(rnd() * 4); if (rows <= 10 && det() < 0.45) si = 4 + Math.floor(det() * 2); // shorter buildings are often masonry
   const base = makePart(w, d, rows, cols, si, variant); g.add(base.mesh);
   let top = base.h, tw = w, td = d;
   if (rows >= 10 && rnd() < 0.55) { // stepped upper tier
@@ -95,6 +175,11 @@ function realisticBuilding(rnd, dist) {
   const mech = new THREE.Mesh(new THREE.BoxGeometry(tw * 0.45, 2.4, td * 0.4), cityRoofMat);
   mech.position.set(rnd() * 1.5 - 0.75, top + 1.2, rnd() * 1.5 - 0.75); mech.castShadow = true; g.add(mech);
   if (rnd() < 0.35) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 9, 6), cityRoofMat); m.position.set(0, top + 6.9, 0); g.add(m); }
+  roofDetails(g, tw, td, top, det);
+  // shops along the ground floor, slightly proud of the facade
+  const shop = storefront(Math.floor(det() * 6)), podH = 4.3;
+  const pod = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, podH, d + 0.5), [shop, shop, parapetMat, parapetMat, shop, shop]);
+  pod.position.y = podH / 2; pod.castShadow = pod.receiveShadow = true; g.add(pod);
   return g;
 }
 

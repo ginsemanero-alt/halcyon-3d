@@ -22,20 +22,24 @@ import { initUI, setStatus } from './ui.js';
 import { Sound } from './audio.js';
 import { flash, clearParticles } from './fx.js';
 import { $, sleep } from './util.js';
+import { startResponders, stopResponders } from './emergency.js';
+import { showWreck, hideWreck } from './wreck.js';
+import { startNews, stopNews } from './news.js';
+import { startBystanders, stopBystanders } from './bystanders.js';
 
 let runId = 0, running = false;
 
 function resetWorld() {
-  resetPlane(); Tower.reset(); clearParticles(); resetPeople(); resetPlaza(); setShot('idle');
+  resetPlane(); Tower.reset(); clearParticles(); resetPeople(); resetPlaza(); stopResponders(); hideWreck(); stopNews(); stopBystanders(); setShot('idle');
   $('smoke').classList.remove('on'); $('tower').classList.remove('emergency');
 }
 
-// opening credits: fades in over the flight shot, out before impact
-async function credits() {
+// title card (opening over the flight shot, closing over the wide shot); a newer run or reset cancels it
+async function credits(isCurrent, ms) {
   const el = $('credits');
   el.classList.add('show');
-  await sleep(3800);
-  el.classList.remove('show');
+  await sleep(ms);
+  if (isCurrent()) el.classList.remove('show');
 }
 
 async function waitUntil(cond, isCurrent, step = 250) { while (isCurrent() && !cond()) await sleep(step); }
@@ -46,11 +50,11 @@ async function runSequence() {
   Sound.init(); resetWorld();
   document.body.classList.add('cinematic'); setStatus('incoming');
   Sound.ambient(true); Sound.jet(); setShot('flight');
-  credits();
+  credits(cur, 4200);
   await fly(); if (!cur()) return;
 
   // impact
-  setStatus('impact'); Tower.impact(); flash(); addShake(2.2); setShot('burn');
+  setStatus('impact'); Tower.impact(); showWreck(); flash(); addShake(2.2); setShot('burn');
   Sound.boom(); setTimeout(() => cur() && Sound.rumble(), 400);
   $('smoke').classList.add('on'); $('tower').classList.add('emergency');
   react(cur);
@@ -65,13 +69,17 @@ async function runSequence() {
   await sleep(3000); if (!cur()) return;
 
   // evacuation: desks -> core -> stairwell -> lobby -> plaza
-  Sound.siren(); Tower.setDoorsOpen(true);
+  Sound.siren(); Tower.setDoorsOpen(true); startResponders(); startNews(); startBystanders();
   const evac = Promise.all(people.map((p) => evacuate(p, cur)));
   (async () => {
     await sleep(3500); if (!cur()) return;
     setShot('burn');
     await waitUntil(() => people.some((p) => p.state === 'stairs'), cur); if (!cur()) return;
     await sleep(1500); if (!cur()) return;
+    setShot('stairs');
+    await sleep(6000); if (!cur()) return;
+    setShot('news'); // the billboard is showing the breaking news by now
+    await sleep(8000); if (!cur()) return;
     setShot('stairs');
     await waitUntil(() => people.filter((p) => p.state === 'out').length >= people.length * 0.5, cur); if (!cur()) return;
     setShot('plaza');
@@ -80,8 +88,13 @@ async function runSequence() {
 
   Sound.alarm(false); $('tower').classList.remove('emergency'); setStatus('clear');
   Sound.ding(); Sound.pa('All floors report clear. Everyone is out safely. Thank you for evacuating.');
-  await sleep(5000); if (!cur()) return;
+  await sleep(3000); if (!cur()) return;
+  setShot('responders');
+  await sleep(9000); if (!cur()) return;
   setShot('wide');
+  await sleep(1500); if (!cur()) return;
+  await credits(cur, 5500); if (!cur()) return;
+  await sleep(1200); if (!cur()) return;
   document.body.classList.remove('cinematic'); running = false;
 }
 

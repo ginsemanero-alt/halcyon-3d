@@ -53,7 +53,7 @@ export const PEOPLE = [
   { name: 'Dev Lindqvist', role: 'Engineer',      floor: 9,  pitch: 0.8, line: 'Walk, do not run. Hold the rail.',
     skinTone: '#e8c4a8', hairStyle: 'short', hairColor: '#c9a46a', outfitTop: '#3d5a80', outfitBottom: '#22223b', accessory: 'none', heightScale: 1.06 },
   { name: 'Tala Reyes',    role: 'Producer',      floor: 17, pitch: 1.3, line: 'This way, the stairs are clear.',
-    skinTone: '#c68f65', hairStyle: 'long', hairColor: '#2a1a12', outfitTop: '#f2cc8f', outfitBottom: '#3d405b', accessory: 'none', heightScale: 0.95 },
+    skinTone: '#c68f65', hairStyle: 'long', hairColor: '#2a1a12', outfitTop: '#2f6f73', outfitBottom: '#3d405b', accessory: 'none', heightScale: 0.95 },
   { name: 'Joon Park',     role: 'Security lead', floor: 3,  pitch: 0.8, line: 'Floor three is moving. Keep going.',
     skinTone: '#e0b48c', hairStyle: 'buzz', hairColor: '#111111', outfitTop: '#1d1d24', outfitBottom: '#1d1d24', accessory: 'cap', heightScale: 1.04 },
   { name: 'Ines Calloway', role: 'Accountant',    floor: 11, pitch: 1.3, line: 'Okay. Okay. Let us go.',

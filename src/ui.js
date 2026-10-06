@@ -3,6 +3,9 @@ import { Sound } from './audio.js';
 import { onUpdate } from './world.js';
 import { people, addPerson, removePerson } from './people.js';
 import { setXrayManual, getXray } from './tower.js';
+import { isFreeCam, setFreeCam, onFreeCam, isCameraBorrowed, focusCamera } from './director.js';
+import { NEWS, NEWS_DEFAULTS, setNewsText, previewNews, isPreviewing, billboardCenter, billboardNormal } from './news.js';
+import { isStreet, setStreet } from './street.js';
 import { $ } from './util.js';
 
 /* =====================================================================
@@ -104,12 +107,15 @@ export function initUI({ onRun, onReset }) {
 
   const panel = $('panel');
   if (innerWidth >= 1024) panel.classList.remove('hidden');
-  $('btn-panel').onclick = () => panel.classList.toggle('hidden');
+  $('btn-panel').onclick = () => {
+    if (document.body.classList.contains('cinematic')) { panel.classList.remove('hidden'); panel.classList.toggle('peek'); }
+    else panel.classList.toggle('hidden');
+  };
 
   document.querySelectorAll('.tab').forEach((t) => {
     t.onclick = () => {
       document.querySelectorAll('.tab').forEach((x) => x.setAttribute('aria-selected', x === t ? 'true' : 'false'));
-      ['inside', 'people', 'sound'].forEach((n) => $('sec-' + n).classList.toggle('hidden', n !== t.dataset.tab));
+      ['inside', 'people', 'sound', 'news'].forEach((n) => $('sec-' + n).classList.toggle('hidden', n !== t.dataset.tab));
     };
   });
 
@@ -143,7 +149,33 @@ export function initUI({ onRun, onReset }) {
   addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
     if (e.key === 'x' || e.key === 'X') toggleXray();
+    if ((e.key === 'c' || e.key === 'C') && !isCameraBorrowed()) setFreeCam(!isFreeCam());
   });
+
+  // 360 view: dragging the scene turns it on, the button or C hands the camera back to the director
+  const camBtn = $('tg-cam');
+  const showCam = (v) => {
+    $('cine-hint').textContent = v ? '360° view · press C or the 360° button to return to the film camera' : 'Drag to look around in 360°';
+    camBtn.textContent = v ? '360° on' : '360° off'; camBtn.className = `rounded-full px-4 py-1.5 text-xs font-black ${v ? 'bg-sky text-dusk' : 'bg-dusk text-bone'}`; };
+  camBtn.onclick = () => setFreeCam(!isFreeCam());
+  onFreeCam(showCam);
+
+  // street mode: first-person bystander (button or B)
+  $('tg-street').onclick = () => setStreet(!isStreet());
+
+  // News tab: edit the billboard's breaking news live
+  const fields = { headline: $('n-headline'), ticker: $('n-ticker'), channel: $('n-channel') };
+  const fill = () => { fields.headline.value = NEWS.headline; fields.ticker.value = NEWS.ticker.replace(/\s*•\s*$/, ''); fields.channel.value = NEWS.channel; };
+  fill();
+  Object.entries(fields).forEach(([k, el]) => el.addEventListener('input', () => setNewsText({ [k]: el.value })));
+  const previewBtn = $('n-preview');
+  const showPreview = () => { previewBtn.textContent = isPreviewing() ? 'Stop preview' : 'Preview on billboard'; };
+  previewBtn.onclick = () => {
+    previewNews(!isPreviewing()); showPreview();
+    if (isPreviewing() && !isStreet()) focusCamera(billboardCenter.clone().addScaledVector(billboardNormal, 17).setY(3), billboardCenter);
+  };
+  $('n-reset').onclick = () => { setNewsText(NEWS_DEFAULTS); fill(); };
+  $('btn-run').addEventListener('click', () => setTimeout(showPreview, 0)); // a run takes over the billboard
 
   buildCutaway();
   renderList(); syncDots(); updateOut();

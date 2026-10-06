@@ -25,15 +25,47 @@ const capsule = (r, len, radial = 8) => new THREE.CapsuleGeometry(r, len, 3, rad
 const skull = new THREE.SphereGeometry(0.105, 18, 14).scale(0.9, 1.13, 1).translate(0, 0.15, 0.005); // slightly egg-shaped
 const neck = new THREE.CylinderGeometry(0.048, 0.054, 0.12, 10).translate(0, 0.0, -0.005);
 const nose = new THREE.SphereGeometry(0.018, 6, 5).scale(0.8, 1.2, 1).translate(0, 0.135, 0.107);
+// anatomical profiles: [radius, y] pairs spun into a smooth body part (closed at both ends)
+const lathe = (pts, segs = 16) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), segs);
+const jaw = new THREE.SphereGeometry(0.084, 16, 10).scale(0.93, 0.82, 0.95).translate(0, 0.088, 0.018);
+const ears = mergeGeometries([
+  new THREE.SphereGeometry(0.023, 8, 6).scale(0.42, 1, 0.72).translate(0.092, 0.148, -0.004),
+  new THREE.SphereGeometry(0.023, 8, 6).scale(0.42, 1, 0.72).translate(-0.092, 0.148, -0.004),
+]);
 const G = {
-  pelvis: capsule(0.12, 0.1, 10).rotateZ(Math.PI / 2).scale(1, 1, 0.78),
-  torso: capsule(0.15, 0.28, 12).scale(1.18, 1, 0.7).translate(0, 0.27, 0),
-  head: mergeGeometries([skull, neck, nose]),
-  headBare: mergeGeometries([skull, neck]), // used when a photo covers the face (no procedural nose)
+  // pelvis (hips space) and torso (spine space): waist, ribcage, chest and sloped shoulders
+  pelvis: lathe([[0.001, -0.14], [0.09, -0.13], [0.13, -0.08], [0.138, -0.02], [0.127, 0.04], [0.117, 0.075], [0.001, 0.08]]).scale(1.12, 1, 0.72),
+  belt: new THREE.CylinderGeometry(0.121, 0.123, 0.034, 18, 1, true).scale(1.13, 1, 0.8).translate(0, 0.062, 0),
+  torso: lathe([[0.001, -0.06], [0.117, -0.05], [0.122, 0.02], [0.116, 0.1], [0.127, 0.2], [0.146, 0.3], [0.152, 0.38], [0.145, 0.44], [0.112, 0.49], [0.058, 0.515], [0.001, 0.525]]).scale(1.22, 1, 0.68),
+  hem: new THREE.CylinderGeometry(0.12, 0.121, 0.03, 18, 1, true).scale(1.235, 1, 0.695).translate(0, -0.035, 0),
+  placket: new THREE.BoxGeometry(0.014, 0.34, 0.006).translate(0, 0.28, 0.101),
+  cuff: new THREE.CylinderGeometry(0.03, 0.029, 0.03, 12, 1, true).translate(0, -0.232, 0),
+  collar: new THREE.TorusGeometry(0.054, 0.011, 6, 18).rotateX(Math.PI / 2).scale(1.05, 1, 0.9).translate(0, 0.505, 0.004),
+  head: mergeGeometries([skull, neck, nose, jaw, ears]),
+  headBare: mergeGeometries([skull, neck, jaw, ears]), // used when a photo covers the face (no procedural nose)
+  eyeWhites: mergeGeometries([new THREE.SphereGeometry(0.0135, 10, 8).scale(1.15, 0.8, 0.6).translate(0.034, 0.16, 0.094), new THREE.SphereGeometry(0.0135, 10, 8).scale(1.15, 0.8, 0.6).translate(-0.034, 0.16, 0.094)]),
+  brows: mergeGeometries([new THREE.BoxGeometry(0.032, 0.007, 0.01).rotateZ(-0.12).translate(0.036, 0.181, 0.1), new THREE.BoxGeometry(0.032, 0.007, 0.01).rotateZ(0.12).translate(-0.036, 0.181, 0.1)]),
+  lips: new THREE.CapsuleGeometry(0.0065, 0.026, 2, 6).rotateZ(Math.PI / 2).scale(1, 1, 0.6).translate(0, 0.1, 0.1),
+  // arms (shoulder / elbow space, hanging along -Y): deltoid + tapered upper arm, forearm, hand with thumb
+  upperArmL: lathe([[0.001, 0.035], [0.042, 0.02], [0.054, -0.02], [0.05, -0.09], [0.044, -0.2], [0.039, -0.28], [0.001, -0.31]], 12),
+  forearmL: lathe([[0.001, 0.012], [0.039, -0.01], [0.042, -0.07], [0.034, -0.17], [0.027, -0.24], [0.001, -0.255]], 12),
+  hand: mergeGeometries([
+    new THREE.SphereGeometry(0.038, 10, 8).scale(0.82, 1.1, 0.45).translate(0, -0.295, 0.004),       // palm
+    new THREE.SphereGeometry(0.034, 10, 8).scale(0.78, 1.05, 0.36).translate(0, -0.335, 0.008),       // fingers
+    new THREE.CapsuleGeometry(0.012, 0.035, 2, 6).rotateX(-0.5).translate(0, -0.3, 0.032),           // thumb
+  ]),
+  // legs (hip / knee space): thigh, knee and calf, shoe with sole, toe box and heel
+  thigh: lathe([[0.001, 0.03], [0.072, 0.0], [0.079, -0.08], [0.069, -0.25], [0.055, -0.42], [0.001, -0.455]], 14),
+  shin: lathe([[0.001, 0.025], [0.054, 0.0], [0.058, -0.1], [0.047, -0.25], [0.034, -0.38], [0.001, -0.405]], 12),
+  shoeUpper: mergeGeometries([new THREE.SphereGeometry(0.06, 12, 8).scale(0.85, 0.75, 2.05).translate(0, -0.432, 0.05), new THREE.CylinderGeometry(0.042, 0.045, 0.06, 10).translate(0, -0.41, -0.005)]),
+  shoeSole: new THREE.BoxGeometry(0.1, 0.025, 0.27).translate(0, -0.468, 0.045),
+  // old names kept for the cast editor preview and other modules
+  upperArm: capsule(0.046, 0.22).translate(0, -0.145, 0),
+  forearm: mergeGeometries([capsule(0.038, 0.2).translate(0, -0.135, 0), new THREE.SphereGeometry(0.042, 8, 6).scale(0.75, 1.15, 0.55).translate(0, -0.3, 0.005)]),
   // curved face decal: a partial sphere just outside the skull, centred on +Z. u runs left to right, v runs forehead to chin.
   face: new THREE.SphereGeometry(0.1066, 28, 24, Math.PI / 2 - 0.86, 1.72, Math.PI * 0.27, Math.PI * 0.55)
     .scale(0.9, 1.13, 1).translate(0, 0.15, 0.005),
-  eyes: mergeGeometries([new THREE.SphereGeometry(0.011, 8, 6).translate(0.034, 0.16, 0.093), new THREE.SphereGeometry(0.011, 8, 6).translate(-0.034, 0.16, 0.093)]),
+  eyes: mergeGeometries([new THREE.SphereGeometry(0.0078, 8, 6).translate(0.034, 0.16, 0.0985), new THREE.SphereGeometry(0.0078, 8, 6).translate(-0.034, 0.16, 0.0985)]), // irises
   upperArm: capsule(0.046, 0.22).translate(0, -0.145, 0),
   forearm: mergeGeometries([capsule(0.038, 0.2).translate(0, -0.135, 0), new THREE.SphereGeometry(0.042, 8, 6).scale(0.75, 1.15, 0.55).translate(0, -0.3, 0.005)]),
   thigh: capsule(0.07, 0.3, 10).translate(0, -0.22, 0),
@@ -44,7 +76,10 @@ const capTop = new THREE.SphereGeometry(0.114, 16, 8, 0, Math.PI * 2, 0, Math.PI
 G.hair = {
   short: capTop.clone().translate(0, 0.165, -0.004),
   buzz: new THREE.SphereGeometry(0.108, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.48).scale(0.92, 1.0, 1.0).translate(0, 0.16, 0.0),
-  long: mergeGeometries([capTop.clone().translate(0, 0.165, -0.004), capsule(0.095, 0.16, 10).scale(1, 1, 0.55).translate(0, 0.08, -0.06)]),
+  long: mergeGeometries([
+    capTop.clone().translate(0, 0.165, -0.004), capsule(0.095, 0.17, 10).scale(1.02, 1, 0.55).translate(0, 0.075, -0.06),
+    capsule(0.03, 0.15, 6).scale(1, 1, 0.8).translate(0.085, 0.09, -0.015), capsule(0.03, 0.15, 6).scale(1, 1, 0.8).translate(-0.085, 0.09, -0.015),
+  ]),
   bun: mergeGeometries([capTop.clone().translate(0, 0.165, -0.004), new THREE.SphereGeometry(0.052, 10, 8).translate(0, 0.25, -0.085)]),
   ponytail: mergeGeometries([capTop.clone().translate(0, 0.165, -0.004), capsule(0.035, 0.16).rotateX(0.35).translate(0, 0.08, -0.13)]),
 };
@@ -67,10 +102,20 @@ G.acc = {
 };
 
 /* ---------- shared materials (cached per colour) ---------- */
+// woven fabric: fine noise used as colour + bump so clothes never read as skin, even in skin-like colours
+const fabricTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), img = x.createImageData(64, 64);
+  for (let i = 0; i < 64 * 64; i++) {
+    const px = i % 64, py = (i / 64) | 0, weave = ((px + py) % 4 < 2 ? 14 : 0) + ((px % 2) ^ (py % 2) ? 8 : 0);
+    const v = 222 + weave - Math.random() * 26; img.data.set([v, v, v, 255], i * 4);
+  }
+  x.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 8); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
 const matCache = new Map();
-function mat(hex, rough = 0.8, metal = 0) {
-  const key = `${hex}|${rough}|${metal}`;
-  if (!matCache.has(key)) matCache.set(key, new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: metal }));
+function mat(hex, rough = 0.8, metal = 0, fabric = false) {
+  const key = `${hex}|${rough}|${metal}|${fabric}`;
+  if (!matCache.has(key)) matCache.set(key, new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: metal, ...(fabric ? { map: fabricTex, bumpMap: fabricTex, bumpScale: 0.6 } : {}) }));
   return matCache.get(key);
 }
 const ACC_MAT = { glasses: () => mat('#1c1c22', 0.35, 0.6), hardhat: () => mat('#f2c12e', 0.45) };
@@ -112,18 +157,31 @@ export class Humanoid {
   build(d) {
     this.scaleG.clear();
     this.scaleG.scale.setScalar(d.heightScale || 1);
-    const skin = mat(d.skinTone, 0.62), top = mat(d.outfitTop, 0.85), bottom = mat(d.outfitBottom, 0.85), shoe = mat('#18171d', 0.6);
+    // stable per-person variation (sleeves, shoe colour) from their look, so a person always dresses the same
+    const hash = [...`${d.skinTone}${d.outfitTop}${d.outfitBottom}${d.hairStyle}${d.hairColor}`].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const longSleeves = d.longSleeves ?? hash % 3 !== 0;
+    const skin = mat(d.skinTone, 0.55), top = mat(d.outfitTop, 0.9, 0, true), bottom = mat(d.outfitBottom, 0.9, 0, true);
+    const shoe = mat(['#18171d', '#2b1d14', '#3a3a40', '#e9e6df'][hash % 4], 0.55), sole = mat('#d9d4cc', 0.8);
+    const topDark = mat(`#${new THREE.Color(d.outfitTop).multiplyScalar(0.72).getHexString()}`, 0.85);
+    const lipCol = mat(`#${new THREE.Color(d.skinTone).lerp(new THREE.Color('#8f3b38'), 0.35).getHexString()}`, 0.5);
     const hips = this.hips = new THREE.Group(); hips.position.y = 0.95; this.scaleG.add(hips);
     this.mesh(G.pelvis, bottom, hips, true);
+    this.mesh(G.belt, mat('#1b1714', 0.5, 0.2), hips);
     const spine = this.spine = new THREE.Group(); spine.position.y = 0.04; hips.add(spine);
     this.mesh(G.torso, top, spine, true);
+    this.mesh(G.collar, topDark, spine); this.mesh(G.hem, topDark, spine); this.mesh(G.placket, topDark, spine);
     const head = this.head = new THREE.Group(); head.position.y = 0.5; spine.add(head);
     const photo = d.headPhoto;
-    this.headMesh = this.mesh(photo ? G.headBare : G.head, skin, head);
+    this.headMesh = this.mesh(photo ? G.headBare : G.head, skin, head, true);
     if (photo) {
       const face = new THREE.Mesh(G.face, faceMaterial(photo));
       face.renderOrder = 2; head.add(face);
-    } else this.mesh(G.eyes, mat('#141217', 0.3), head);
+    } else {
+      this.mesh(G.eyeWhites, mat('#f2efe8', 0.3), head);
+      this.mesh(G.eyes, mat('#141217', 0.2), head);
+      this.mesh(G.brows, mat(d.hairColor, 0.8), head);
+      this.mesh(G.lips, lipCol, head);
+    }
     // short/buzz hair is fully hidden by headwear; long hair, buns and ponytails still show under it
     const hat = d.accessory === 'cap' || d.accessory === 'hardhat';
     if (G.hair[d.hairStyle] && !(hat && (d.hairStyle === 'short' || d.hairStyle === 'buzz'))) this.mesh(G.hair[d.hairStyle], mat(d.hairColor, 0.7), head);
@@ -132,9 +190,11 @@ export class Humanoid {
     if (d.accessory === 'hardhat') this.mesh(G.acc.hardhat, ACC_MAT.hardhat(), head);
     const arm = (side) => {
       const sh = new THREE.Group(); sh.position.set(side * 0.2, 0.44, 0); spine.add(sh);
-      this.mesh(G.upperArm, top, sh);
+      this.mesh(G.upperArmL, top, sh, true);
       const el = new THREE.Group(); el.position.y = -0.3; sh.add(el);
-      this.mesh(G.forearm, skin, el);
+      this.mesh(G.forearmL, longSleeves ? top : skin, el, true);
+      if (longSleeves) this.mesh(G.cuff, topDark, el);
+      this.mesh(G.hand, skin, el);
       return [sh, el];
     };
     [this.shL, this.elL] = arm(1); [this.shR, this.elR] = arm(-1);
@@ -143,7 +203,8 @@ export class Humanoid {
       this.mesh(G.thigh, bottom, hp, true);
       const kn = new THREE.Group(); kn.position.y = -0.44; hp.add(kn);
       this.mesh(G.shin, bottom, kn, true);
-      this.mesh(G.shoe, shoe, kn);
+      this.mesh(G.shoeUpper, shoe, kn, true);
+      this.mesh(G.shoeSole, sole, kn);
       return [hp, kn];
     };
     [this.hipL, this.knL] = leg(1); [this.hipR, this.knR] = leg(-1);
@@ -276,8 +337,10 @@ function claimSlot(floor) {
   const list = floor === 1 ? LOBBY_SLOTS : SLOTS;
   if (!usedSlots.has(floor)) usedSlots.set(floor, new Set());
   const used = usedSlots.get(floor);
-  const free = list.map((_, i) => i).filter((i) => !used.has(i));
-  const i = free.length ? free[Math.floor(Math.random() * free.length)] : Math.floor(Math.random() * list.length);
+  // on the impact floor nobody sits in the west zone, where the wreck ends up (see wreck.js)
+  const ok = list.map((_, i) => i).filter((i) => floor !== IMPACT_FLOOR || list[i].x > -3);
+  const free = ok.filter((i) => !used.has(i));
+  const i = free.length ? free[Math.floor(Math.random() * free.length)] : ok[Math.floor(Math.random() * ok.length)];
   used.add(i); return { ...list[i], idx: i };
 }
 function releaseSlot(p) { usedSlots.get(p.data.floor)?.delete(p.slot.idx); }
